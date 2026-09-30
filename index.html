@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QoS Network Selector | Enterprise Modes</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        :root { --primary: #2c3e50; --accent: #2980b9; --bg: #ecf0f1; --card: #ffffff; --success: #27ae60; --warning: #f39c12; --text-muted: #7f8c8d; }
+        body { font-family: 'Segoe UI', sans-serif; background-color: var(--bg); margin: 0; display: flex; justify-content: center; align-items: center; min-height: 100vh; padding: 20px; }
+        .container { background: var(--card); padding: 2.5rem; border-radius: 12px; box-shadow: 0 8px 30px rgba(0,0,0,0.08); width: 100%; max-width: 700px; }
+        h2 { text-align: center; color: var(--primary); margin-bottom: 1rem; font-weight: 800; }
+        
+        .mode-tabs { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 20px; border-bottom: 2px solid #eee; padding-bottom: 10px; justify-content: center;}
+        .mode-tab { padding: 8px 12px; font-size: 0.8rem; background: #f8f9fa; border: 1px solid #ddd; border-radius: 4px; cursor: pointer; font-weight: bold; color: #555; transition: 0.2s; }
+        .mode-tab:hover { background: #e9ecef; }
+        .mode-tab.active { background: var(--accent); color: white; border-color: var(--accent); }
+        
+        .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px; }
+        .form-group { margin-bottom: 1rem; }
+        label { display: block; margin-bottom: 5px; color: #555; font-weight: 600; font-size: 0.85rem; }
+        input, select { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 6px; font-size: 0.95rem; box-sizing: border-box; }
+        input:focus, select:focus { border-color: var(--accent); outline: none; }
+        button { width: 100%; padding: 12px; background-color: var(--accent); color: white; border: none; border-radius: 6px; font-size: 1.1rem; font-weight: 700; cursor: pointer; margin-top: 1rem; transition: background 0.2s; }
+        button:hover { background-color: #1c5980; }
+        
+        .result-box { margin-top: 2rem; padding: 1.5rem; border-radius: 8px; text-align: center; background: #fff; border: 1px solid #e0e0e0; animation: slideUp 0.5s ease-out; }
+        .res-optimal { border-top: 5px solid var(--success); }
+        .res-switch { border-top: 5px solid var(--warning); }
+        .result-title { font-size: 1.5rem; font-weight: 800; margin: 10px 0; color: var(--primary); }
+        .result-reason { font-size: 0.95rem; color: #666; font-style: italic; margin-bottom: 20px;}
+        
+        .comparison-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; text-align: left; margin-bottom: 15px; }
+        .comp-card { padding: 15px; border-radius: 8px; border: 1px solid #eee; }
+        .comp-card.current { background: #fff3e0; border-color: #ffe0b2; }
+        .comp-card.recommended { background: #e8f5e9; border-color: #c8e6c9; }
+        .comp-title { font-weight: bold; font-size: 1rem; margin-bottom: 10px; border-bottom: 1px solid rgba(0,0,0,0.1); padding-bottom: 5px; }
+        
+        .metrics-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; text-align: left; border-top: 1px solid #eee; padding-top: 15px;}
+        .metric-card { background: #f8f9fa; padding: 12px; border-radius: 6px; border: 1px solid #eee; }
+        .metric-label { font-weight: bold; color: var(--text-muted); display: block; font-size: 0.7rem; text-transform: uppercase; }
+        .metric-value { font-weight: 700; color: var(--primary); font-size: 0.95rem;}
+        
+        .alert-msg { font-size: 0.85rem; color: #c0392b; background: #fadbd8; padding: 12px; border-radius: 6px; margin-bottom: 20px; border-left: 4px solid #e74c3c; text-align: left; }
+        .prompt-msg { font-size: 0.95rem; color: #1f618d; background: #e8f4f8; padding: 20px; border-radius: 6px; margin-bottom: 20px; border-left: 5px solid #3498db; }
+        .prompt-btn { font-size: 0.85rem; padding: 10px; margin-top: 10px; width: 48%; display: inline-block;}
+        
+        @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2><i class="fas fa-network-wired"></i> QoS Intelligence</h2>
+    
+    <div class="mode-tabs">
+        <div class="mode-tab active" onclick="switchMode('manual_override', this)">Manual Override</div>
+        <div class="mode-tab" onclick="switchMode('smart_auto_fetch', this)">Smart Auto-Fetch</div>
+        <div class="mode-tab" onclick="switchMode('adaptive_fallback', this)">Adaptive Fallback</div>
+        <div class="mode-tab" onclick="switchMode('interactive_feedback', this)">Interactive Feedback</div>
+        <div class="mode-tab" onclick="switchMode('comparative_analytics', this)">Comparative Analytics</div>
+        <div class="mode-tab" onclick="switchMode('enterprise_coverage', this)">Enterprise Coverage</div>
+    </div>
+
+    {% if manual_alert %}
+        <div class="alert-msg"><i class="fas fa-exclamation-triangle"></i> Device ID '{{ device_id }}' not found in database. Proceeding via Manual Override inputs.</div>
+    {% endif %}
+
+    {% if adaptive_prompt %}
+        <div class="prompt-msg">
+            <i class="fas fa-question-circle"></i> <strong>Device ID '{{ device_id }}' not found.</strong><br> How would you like to proceed?
+            <div style="display: flex; justify-content: space-between; margin-top: 15px;">
+                <button type="button" class="prompt-btn" style="background-color: #e67e22;" onclick="handlePromptChoice('manual_override')">Use Manual Override</button>
+                <button type="button" class="prompt-btn" style="background-color: #27ae60;" onclick="handlePromptChoice('interactive_feedback')">Use Interactive Feedback</button>
+            </div>
+        </div>
+    {% endif %}
+
+    <form method="POST" id="main-form" {% if adaptive_prompt %}style="display:none;"{% endif %}>
+        <input type="hidden" id="interaction_mode" name="interaction_mode" value="{{ active_mode }}">
+        <input type="hidden" id="trigger_manual_alert" name="trigger_manual_alert" value="false">
+        
+        <div id="device-fields" class="form-grid">
+            <div class="form-group"><label>🆔 Device ID</label><input type="text" name="device_id" id="device_id" placeholder="D-101" value="{{ form_data.get('device_id', '') }}"></div>
+            <div class="form-group" id="carrier-field"><label>📡 Current Carrier</label>
+                <select name="current_carrier">
+                    <option value="Sprint" {% if form_data.get('current_carrier') == 'Sprint' %}selected{% endif %}>Sprint</option>
+                    <option value="AT&T" {% if form_data.get('current_carrier') == 'AT&T' or not form_data.get('current_carrier') %}selected{% endif %}>AT&T</option>
+                    <option value="Verizon" {% if form_data.get('current_carrier') == 'Verizon' %}selected{% endif %}>Verizon</option>
+                    <option value="T-Mobile" {% if form_data.get('current_carrier') == 'T-Mobile' %}selected{% endif %}>T-Mobile</option>
+                </select>
+            </div>
+        </div>
+
+        <div id="environmental-fields">
+            <div class="form-grid">
+                <div class="form-group"><label>📱 Model</label><input type="text" name="device_model" placeholder="e.g. iPhone 14 Pro" value="{{ form_data.get('device_model', '') }}"></div>
+                <div class="form-group"><label>🏳️ Country Code</label><input type="text" name="country_code" placeholder="US" value="{{ form_data.get('country_code', 'US') }}"></div>
+            </div>
+            <div class="form-grid">
+                <div class="form-group"><label>Latitude</label><input type="number" step="any" name="lat" placeholder="40.71" value="{{ form_data.get('lat', '') }}"></div>
+                <div class="form-group"><label>Longitude</label><input type="number" step="any" name="lon" placeholder="-74.01" value="{{ form_data.get('lon', '') }}"></div>
+            </div>
+        </div>
+
+        <div class="form-grid">
+            <div class="form-group"><label>📅 Date</label><input type="date" name="date" required value="{{ form_data.get('date', '') }}"></div>
+            <div class="form-group"><label>⏰ Time</label><input type="time" name="time" required value="{{ form_data.get('time', '') }}"></div>
+        </div>
+        
+        <button type="submit" id="submit-btn">Run Diagnostics</button>
+    </form>
+
+    {% if result and not adaptive_prompt %}
+        <div class="result-box {% if 'Switch' in result.action %}res-switch{% else %}res-optimal{% endif %}">
+            
+            {% if result.mode == 'comparative_analytics' %}
+                <div class="result-title">Comparative Analysis</div>
+                <div class="result-reason">{{ result.reason }}</div>
+                <div class="comparison-grid">
+                    <div class="comp-card current">
+                        <div class="comp-title">❌ Current: {{ result.current_carrier }}</div>
+                        <span class="metric-label">Horizontal Accuracy</span><span class="metric-value">{{ metrics.Degraded_Accuracy }} (Degraded)</span><br><br>
+                        <span class="metric-label">Reliability</span><span class="metric-value">{{ metrics.Degraded_Reliability }}% (Congested)</span>
+                    </div>
+                    <div class="comp-card recommended">
+                        <div class="comp-title">✅ Recommended: {{ metrics.Recommended_Carrier }}</div>
+                        <span class="metric-label">Horizontal Accuracy</span><span class="metric-value">{{ metrics.Horizontal_Accuracy }} (Optimal)</span><br><br>
+                        <span class="metric-label">Reliability</span><span class="metric-value">{{ metrics.Signal_Reliability_Score }}% (Clear)</span>
+                    </div>
+                </div>
+            {% elif result.mode in ['enterprise_coverage', 'interactive_feedback'] %}
+                <div class="result-title">Location Analysis Complete</div>
+                <div class="result-reason">Analysis for Geohash {{ metrics.Geohash_Zone }} complete.</div>
+            {% else %}
+                <div class="result-title">{{ result.action }}</div>
+                <div class="result-reason">{{ result.reason }}</div>
+            {% endif %}
+
+            <div class="metrics-grid">
+                <div class="metric-card"><span class="metric-label">Traffic Load</span><span class="metric-value">{{ metrics.Traffic_Load_Index }}</span></div>
+                <div class="metric-card"><span class="metric-label">5G Capable</span><span class="metric-value">{% if metrics['5G_Capability'] == 1 %}Yes{% else %}No{% endif %}</span></div>
+                <div class="metric-card"><span class="metric-label">Roaming</span><span class="metric-value">{% if metrics.Roaming_Status == 1 %}<span style="color:red">Yes</span>{% else %}No{% endif %}</span></div>
+                <div class="metric-card"><span class="metric-label">Horizontal Accuracy</span><span class="metric-value">{{ metrics.Horizontal_Accuracy }}</span></div>
+                <div class="metric-card"><span class="metric-label">Signal Reliability</span><span class="metric-value">{{ metrics.Signal_Reliability_Score }}%</span></div>
+                <div class="metric-card"><span class="metric-label">Winning Carrier</span><span class="metric-value">{{ metrics.Recommended_Carrier }}</span></div>
+            </div>
+        </div>
+    {% endif %}
+</div>
+
+<script>
+    function switchMode(mode, element) {
+        document.querySelectorAll('.mode-tab').forEach(t => t.classList.remove('active'));
+        if (element) element.classList.add('active');
+        
+        document.getElementById('interaction_mode').value = mode;
+
+        let envFields = document.getElementById('environmental-fields');
+        let devFields = document.getElementById('device-fields');
+        let btn = document.getElementById('submit-btn');
+
+        // Reset display
+        envFields.style.display = 'block';
+        devFields.style.display = 'grid';
+
+        if (mode === 'smart_auto_fetch' || mode === 'adaptive_fallback' || mode === 'comparative_analytics') {
+            envFields.style.display = 'none'; 
+            btn.innerText = "Auto-Fetch & Analyze";
+        } else if (mode === 'interactive_feedback') {
+            devFields.style.display = 'none'; 
+            document.getElementById('device_id').value = ''; 
+            btn.innerText = "Get Interactive Feedback";
+        } else if (mode === 'enterprise_coverage') {
+            devFields.style.display = 'none'; 
+            document.getElementById('device_id').value = ''; 
+            btn.innerText = "Check Zone Coverage";
+        } else {
+            btn.innerText = "Run Diagnostics";
+        }
+    }
+
+    function handlePromptChoice(choice) {
+        if (choice === 'manual_override') {
+            document.getElementById('trigger_manual_alert').value = 'true';
+        } else if (choice === 'interactive_feedback') {
+            document.getElementById('device_id').value = '';
+        }
+        
+        document.getElementById('main-form').style.display = 'block';
+        document.getElementById('interaction_mode').value = choice;
+        document.getElementById('main-form').submit();
+    }
+
+    window.onload = () => {
+        let activeMode = "{{ active_mode }}";
+        if ("{{ adaptive_prompt }}" === "True") return; 
+        
+        let tabs = document.querySelectorAll('.mode-tab');
+        tabs.forEach(t => {
+            if(t.getAttribute('onclick').includes(activeMode)) {
+                switchMode(activeMode, t);
+            }
+        });
+    }
+</script>
+</body>
+</html>
