@@ -7,6 +7,9 @@ This project introduces a Context-Aware Network Selection System that proactivel
 [watch the demo on youtube](https://youtu.be/eFfldI0EHNE)
 ## Enterprise Dataset Expansion & Advanced Feature Synthesis
 [watch the demo on youtube](https://youtu.be/zYqCfl24oJg)
+## Podman Deployment Demonstration
+[watch the demo on youtube](https://youtu.be/AsjGI_re1xw)
+
 
 1. Data Collection
 The system starts with historical/synthesized mobile network records containing device, geographical, temporal, carrier, and network-context information. The raw data is stored as CSV and processed using Pandas.
@@ -43,3 +46,6 @@ Automated API Load Testing and Performance Analytics validates the production sc
 
 Enterprise Dataset Expansion & Advanced Feature Synthesis:-
 To bridge the gap toward enterprise-grade readiness, an advanced data synthesis module (extended_dataset_tasks.py) was engineered to programmatically inject five critical real-world telemetry parameters across the entire dataset without modifying core training files. This extension tracks dynamic user mobility states (stationary, pedestrian, vehicular), assigns application slicing profiles (URLLC critical vs. eMBB high-bandwidth), calculates thermal battery drain rates, models core network jitter and packet loss, and computes a unified composite reinforcement learning reward score. To validate system execution instantly, a companion verification script (demo_extended.py) performs stratified random sampling to output dynamic analytical reports, ensuring robust performance under complex real-world edge cases.
+
+ Podman Deployment Demonstration:-
+This repository serves as the live deployment demonstration for the Context-Aware Proactive Network Selection framework, showcasing a containerized, full-stack application built to optimize mobile Quality of Service (QoS) using machine learning metrics. To ensure optimal performance for the interactive web dashboard while maintaining data integrity, this demo utilizes a sampled version of the extended network telemetry dataset. The application features a dual-mode Flask API engineered to handle both real-time data sampling for rapid frontend streaming in "Live Telemetry" mode, and deep database queries for specific device IDs in "DB Query Search" mode. Built using Python, Flask, HTML, CSS, and JavaScript, the system ensures enterprise-grade security by being containerized with Podman within a Windows Subsystem for Linux (WSL2) environment, leveraging a rootless, daemonless architecture and isolated Linux IP resolution. While this repository is dedicated solely to the deployment and UI demonstration, the core Reinforcement Learning algorithms (A2C, DQN), comprehensive machine learning models, and the complete un-sampled dataset are maintained in a separate repository. A full video demonstration of the system and its Podman deployment can be viewed on YouTube at https://youtu.be/AsjGI_re1xw.
