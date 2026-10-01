@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Smart Network Selection - Extended Dataset Monitor</title>
+  <style>
+    * { box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+    body { background-color: #0f172a; color: #f8fafc; margin: 0; padding: 24px; }
+    .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+    h1 { font-size: 1.5rem; margin: 0; color: #38bdf8; }
+    .metrics-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 24px; }
+    .metric-card { background: #1e293b; padding: 16px; border-radius: 8px; border: 1px solid #334155; }
+    .metric-title { font-size: 0.8rem; color: #94a3b8; text-transform: uppercase; margin-bottom: 6px; }
+    .metric-value { font-size: 1.4rem; font-weight: bold; color: #f1f5f9; }
+    .toolbar { display: flex; gap: 12px; margin-bottom: 16px; }
+    select, input[type="text"] { padding: 10px 14px; background: #1e293b; border: 1px solid #334155; color: white; border-radius: 6px; }
+    input[type="text"] { flex: 1; }
+    select { font-weight: bold; color: #38bdf8; cursor: pointer; }
+    button { background: #0284c7; color: white; border: none; padding: 10px 18px; border-radius: 6px; cursor: pointer; font-weight: 600; }
+    button:hover { background: #0369a1; }
+    .table-container { overflow-x: auto; background: #1e293b; border-radius: 8px; border: 1px solid #334155; max-height: 520px; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.82rem; white-space: nowrap; }
+    th { background: #0f172a; position: sticky; top: 0; padding: 12px 14px; text-align: left; color: #38bdf8; border-bottom: 2px solid #334155; }
+    td { padding: 10px 14px; border-bottom: 1px solid #334155; }
+    tr:hover { background-color: #334155; }
+    .badge { display: inline-block; padding: 3px 8px; border-radius: 4px; font-weight: bold; font-size: 0.75rem; }
+    .badge-5g { background: #065f46; color: #34d399; }
+    .badge-rl { background: #1e1b4b; color: #a5b4fc; }
+  </style>
+</head>
+<body>
+
+  <div class="header">
+    <div>
+      <h1>QoS Smart Network Selection Engine</h1>
+      <small style="color: #94a3b8;">Containerized RL Environment & Feature Telemetry</small>
+    </div>
+    <button onclick="fetchData()">Refresh Telemetry</button>
+  </div>
+
+  <div class="metrics-grid">
+    <div class="metric-card">
+      <div class="metric-title">Total Processed Records</div>
+      <div class="metric-value" id="total-rows">Loading...</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-title">Avg Signal Reliability</div>
+      <div class="metric-value" id="avg-signal">--</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-title">Avg RL Composite Reward</div>
+      <div class="metric-value" id="avg-reward">--</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-title">Carrier Options Count</div>
+      <div class="metric-value" id="carrier-count">--</div>
+    </div>
+  </div>
+
+  <div class="toolbar">
+    <!-- Mode Selector Dropdown -->
+    <select id="mode-selector" onchange="switchMode()">
+      <option value="live">Mode: Live Telemetry (100 Samples)</option>
+      <option value="query">Mode: DB Query Search (All Data)</option>
+    </select>
+
+    <input type="text" id="search-input" placeholder="Search by Carrier, Device ID, Geohash Zone..." onkeyup="handleSearch()">
+    
+    <div id="row-count-badge" style="background: #334155; padding: 10px 14px; border-radius: 6px; font-weight: bold; font-size: 0.9rem; color: #34d399; white-space: nowrap; border: 1px solid #065f46;">
+      Displaying: 0 Records
+    </div>
+  </div>
+
+  <div class="table-container">
+    <table id="data-table">
+      <thead>
+        <tr id="table-headers"></tr>
+      </thead>
+      <tbody id="table-body">
+        <tr><td colspan="23" style="text-align: center; padding: 24px;">Loading dataset records from Podman container...</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <script>
+    let rawRecords = [];
+    let searchTimeout;
+
+    async function fetchData() {
+      try {
+        const response = await fetch('/api/dataset-records');
+        const result = await response.json();
+
+        if (result.status === "success") {
+          rawRecords = result.data;
+          document.getElementById('total-rows').innerText = result.total_rows.toLocaleString();
+          document.getElementById('avg-signal').innerText = result.metrics.avg_signal_reliability;
+          document.getElementById('avg-reward').innerText = result.metrics.avg_composite_reward;
+          document.getElementById('carrier-count').innerText = result.metrics.unique_carriers;
+
+          // Only force-render if we are in Live Mode
+          if (document.getElementById('mode-selector').value === "live") {
+            renderTable(rawRecords);
+          }
+        }
+      } catch (err) {
+        console.error("Failed to load records", err);
+      }
+    }
+
+    // Handles switching between Live Mode and DB Query Mode
+    function switchMode() {
+      const mode = document.getElementById('mode-selector').value;
+      document.getElementById('search-input').value = ""; // Clear search bar
+      
+      if (mode === "live") {
+        document.getElementById('search-input').placeholder = "Search live telemetry data...";
+        renderTable(rawRecords);
+      } else {
+        document.getElementById('search-input').placeholder = "Type Device ID, Carrier, etc. to query 200k DB...";
+        document.getElementById('table-body').innerHTML = `<tr><td colspan="23" style="text-align: center; padding: 24px;">Type above to query the full 200,000 row database...</td></tr>`;
+        document.getElementById('row-count-badge').innerText = `Displaying: 0 Records`;
+      }
+    }
+
+    // Handles the actual typing in the search bar
+    function handleSearch() {
+      const mode = document.getElementById('mode-selector').value;
+      const q = document.getElementById('search-input').value.trim().toLowerCase();
+
+      if (mode === "live") {
+        // FAST Client-Side Filtering
+        const filtered = rawRecords.filter(row => {
+          return Object.values(row).some(v => String(v).toLowerCase().includes(q));
+        });
+        renderTable(filtered);
+      } else {
+        // DEEP Server-Side Search
+        clearTimeout(searchTimeout);
+        if (q.length === 0) {
+          switchMode(); // Reset view if input is empty
+          return;
+        }
+
+        document.getElementById('table-body').innerHTML = `<tr><td colspan="23" style="text-align: center; padding: 24px;">Querying Full Database...</td></tr>`;
+        
+        searchTimeout = setTimeout(async () => {
+          try {
+            const response = await fetch(`/api/search?q=${encodeURIComponent(q)}`);
+            const result = await response.json();
+            if (result.status === "success") {
+              renderTable(result.data);
+            }
+          } catch (err) {
+            console.error("DB Query failed", err);
+          }
+        }, 400); // 400ms delay prevents overloading the server while typing
+      }
+    }
+
+    function renderTable(data) {
+      if (!data || data.length === 0) {
+        document.getElementById('row-count-badge').innerText = `Displaying: 0 Records`;
+        document.getElementById('table-body').innerHTML = `<tr><td colspan="23" style="text-align: center; padding: 24px;">No matching records found.</td></tr>`;
+        return;
+      }
+      
+      document.getElementById('row-count-badge').innerText = `Displaying: ${data.length} Records`;
+      
+      const headers = Object.keys(data[0]);
+      const headerRow = document.getElementById('table-headers');
+      headerRow.innerHTML = headers.map(h => `<th>${h}</th>`).join('');
+
+      const tbody = document.getElementById('table-body');
+      tbody.innerHTML = data.map(row => {
+        return `<tr>` + headers.map(key => {
+          let val = row[key];
+          if (key === '5G_Capability') {
+            return `<td><span class="badge badge-5g">${val}</span></td>`;
+          }
+          if (key === 'Composite_RL_Reward') {
+            return `<td><span class="badge badge-rl">${val}</span></td>`;
+          }
+          return `<td>${val !== null && val !== undefined ? val : ''}</td>`;
+        }).join('') + `</tr>`;
+      }).join('');
+    }
+
+    window.onload = fetchData;
+  </script>
+</body>
+</html>
